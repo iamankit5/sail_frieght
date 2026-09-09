@@ -1,0 +1,177 @@
+{
+    "evaluation_timestamp": "2026-09-09T03:55:39.294461",
+    "summary": {
+        "total_models_evaluated": 4,
+        "statuses": {
+            "OK (Well-Fitted)": 4,
+            "OVERFITTED": 0,
+            "UNDERFITTED": 0,
+            "NO SKILL VS NAIVE BASELINE": 3
+        },
+        "naive_baseline_check": {
+            "description": "Freight rate models are additionally checked against a zero-ML naive persistence baseline (yesterday's 7-day moving average) to confirm they add real forecasting skill, not just autocorrelation.",
+            "models_checked": 3,
+            "models_beating_naive_baseline": 0
+        }
+    },
+    "models": {
+        "freight_random_forest_regressor": {
+            "model_name": "Freight Rate Random Forest Regressor",
+            "task": "Regression (Dry Bulk Index Prediction)",
+            "dataset": "processed_freight_training_data.csv",
+            "train_samples": 1634,
+            "test_samples": 409,
+            "metrics": {
+                "train_rmse": 0.6445,
+                "test_rmse": 0.4708,
+                "train_mae": 0.4396,
+                "test_mae": 0.3744,
+                "train_r2": 0.9938,
+                "test_r2": 0.953,
+                "rmse_overfit_gap": -0.1737,
+                "rmse_overfit_ratio": 0.7305,
+                "naive_baseline_rmse": 0.3608,
+                "naive_baseline_r2": 0.9724,
+                "beats_naive_baseline": false,
+                "skill_gain_vs_naive_pct": -30.49
+            },
+            "status": "OK (Well-Fitted) / NO SKILL VS NAIVE BASELINE",
+            "diagnosis_reason": "Train and test performance are well-balanced (Overfit Ratio=0.73, Test R2=0.953). WARNING: Model RMSE (0.4708) does not beat the naive persistence baseline RMSE (0.3608) \u2014 the model provides no measurable forecasting skill beyond assuming tomorrow equals yesterday's moving average.",
+            "confusion_matrix": [
+                [
+                    137,
+                    0,
+                    0
+                ],
+                [
+                    24,
+                    98,
+                    13
+                ],
+                [
+                    0,
+                    8,
+                    129
+                ]
+            ]
+        },
+        "freight_gradient_boosting_regressor": {
+            "model_name": "Freight Rate Gradient Boosting Regressor",
+            "task": "Regression (Dry Bulk Index Prediction)",
+            "dataset": "processed_freight_training_data.csv",
+            "train_samples": 1634,
+            "test_samples": 409,
+            "metrics": {
+                "train_rmse": 0.5873,
+                "test_rmse": 0.4744,
+                "train_mae": 0.4118,
+                "test_mae": 0.3594,
+                "train_r2": 0.9948,
+                "test_r2": 0.9522,
+                "rmse_overfit_gap": -0.113,
+                "rmse_overfit_ratio": 0.8077,
+                "naive_baseline_rmse": 0.3608,
+                "naive_baseline_r2": 0.9724,
+                "beats_naive_baseline": false,
+                "skill_gain_vs_naive_pct": -31.48
+            },
+            "status": "OK (Well-Fitted) / NO SKILL VS NAIVE BASELINE",
+            "diagnosis_reason": "Train and test performance are well-balanced (Overfit Ratio=0.81, Test R2=0.952). WARNING: Model RMSE (0.4744) does not beat the naive persistence baseline RMSE (0.3608) \u2014 the model provides no measurable forecasting skill beyond assuming tomorrow equals yesterday's moving average.",
+            "confusion_matrix": [
+                [
+                    137,
+                    0,
+                    0
+                ],
+                [
+                    25,
+                    99,
+                    11
+                ],
+                [
+                    0,
+                    12,
+                    125
+                ]
+            ]
+        },
+        "bunker_price_ridge_regressor": {
+            "model_name": "VLSFO Bunker Price Regularized Regressor",
+            "task": "Regression (VLSFO Price Forecasting)",
+            "dataset": "historical_prices.csv",
+            "train_samples": 581,
+            "test_samples": 146,
+            "metrics": {
+                "train_rmse": 7.1332,
+                "test_rmse": 7.606,
+                "train_mae": 5.674,
+                "test_mae": 6.2342,
+                "train_r2": 0.9904,
+                "test_r2": 0.7787,
+                "rmse_overfit_gap": 0.4728,
+                "rmse_overfit_ratio": 1.0663,
+                "naive_baseline_rmse": 6.1801,
+                "naive_baseline_r2": 0.8539,
+                "beats_naive_baseline": false,
+                "skill_gain_vs_naive_pct": -23.07
+            },
+            "status": "OK (Well-Fitted) / NO SKILL VS NAIVE BASELINE",
+            "diagnosis_reason": "Train and test performance are well-balanced (Overfit Ratio=1.07, Test R2=0.779). WARNING: Model RMSE (7.6060) does not beat the naive persistence baseline RMSE (6.1801) \u2014 the model provides no measurable forecasting skill beyond assuming tomorrow equals yesterday's moving average.",
+            "confusion_matrix": [
+                [
+                    36,
+                    12,
+                    0
+                ],
+                [
+                    2,
+                    28,
+                    18
+                ],
+                [
+                    0,
+                    2,
+                    48
+                ]
+            ]
+        },
+        "chartering_decision_classifier": {
+            "model_name": "Vessel Chartering Action Decision Classifier",
+            "task": "3-Class Classification (Charter Action Decision)",
+            "classes": [
+                "HOLD / WAIT",
+                "NEUTRAL",
+                "CHARTER NOW"
+            ],
+            "train_samples": 1634,
+            "test_samples": 409,
+            "metrics": {
+                "train_accuracy": 0.6695,
+                "test_accuracy": 0.5623,
+                "accuracy_gap": 0.1072,
+                "precision_macro": 0.1874,
+                "recall_macro": 0.3333,
+                "f1_score_macro": 0.24
+            },
+            "status": "OK (Well-Fitted) (Majority Class Collapse)",
+            "diagnosis_reason": "Train accuracy (67.0%) and test accuracy (56.2%) show solid generalization (Gap=10.7%). NOTE / LIMITATION: Classifier exhibits severe class collapse (predicting majority class 'CHARTER NOW'). Macro F1 is low (0.24) and precision is skewed. Charter recommendations in the platform should be driven by transparent moving average & forecast price deltas rather than standalone uncalibrated classifier predictions.",
+            "confusion_matrix": [
+                [
+                    0,
+                    0,
+                    63
+                ],
+                [
+                    0,
+                    0,
+                    116
+                ],
+                [
+                    0,
+                    0,
+                    230
+                ]
+            ]
+        }
+    }
+}
