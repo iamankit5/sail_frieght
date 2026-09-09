@@ -1,0 +1,14 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    # Ping every 14 minutes to prevent Render free-tier spin-down (15 min idle timeout)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep backend alive
+        run: curl -fsS https://sail-frieght.onrender.com/api/health
