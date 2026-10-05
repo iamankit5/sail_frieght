@@ -1,98 +1,53 @@
-# SAIL AI Maritime Machine Learning — Model Honesty & Scientific Audit Report
+# Machine Learning — Model Honesty & Scientific Audit Report
 
-> **Audited for SIH 2026 Competition Jury & Technical Evaluation Panels**  
-> *Author: SAIL Ocean Logistics AI Research Team*  
-> *Date: September 2026*
+> *Last updated: October 2026 · Regenerate with `python ml/evaluate_ml_models.py`*
 
 ---
 
-## 1. Executive Summary & Core Principle
+## 1. Executive Summary
 
-In maritime logistics and commodity procurement, mathematical honesty is a safety and fiduciary obligation. Misrepresenting a predictive model’s capability can lead to multi-million-rupee chartering losses, unhedged fuel exposure, and vessel berthing disputes.
+In freight procurement, misrepresenting a model's capability leads to multi-million-rupee chartering losses. This report documents the current evaluation of every ML model in the repository, run with a leakage-free, chronological methodology — including the findings we are not proud of but publish anyway.
 
-This report documents the rigorous evaluation of all machine learning models in the SAIL Freight Intelligence repository. Unlike typical hackathon presentations that claim "95% accuracy" or "AI guarantees savings," our evaluation engine tests models against **zero-ML naive persistence baselines**, investigates time-series autocorrelation, and exposes class distributions in confusion matrices.
+**Headline result (October 2026 rework):** after switching to chronological train/validation/test splits, signal-aware lagged features, and *naive-anchored residual shrinkage*, **both freight regressors genuinely beat the zero-ML naive persistence baseline out-of-sample** — the RF by **27.7%** RMSE (confirmed 5/5 folds in forward-chaining cross-validation, gains of +23–31%), where the legacy models lost to it by ~30%.
 
----
+## 2. Methodology
 
-## 2. Model Performance Summary & Baseline Benchmarks
+1. **Chronological 70/10/20 split** — train on the oldest 70%, tune on the next 10%, test once on the most recent 20%. No shuffled splits (which leak the future into training).
+2. **Strictly lagged features** — every feature is computed from information available at t−1 (returns over 1/5/20 days, MA 7/30/90 ratios, rolling volatility, distance from the 90-day high/low, oil returns, USD/INR change).
+3. **Naive-anchored residual shrinkage** — each regressor predicts only the *correction* to the naive MA7-persistence forecast, scaled by a shrinkage factor α tuned on the validation slice. The model is allowed to help only where its pattern was reliable in validation; α→0 collapses safely to the naive forecast.
+4. **Classifier benchmarked against the majority class** of its own test window, with the full confusion matrix published.
 
-All models were evaluated on chronological train/test splits (80% training on older data, 20% testing on recent out-of-sample data). The results from `ml/reports/model_performance_evaluation.json` are summarized below:
+## 3. Results (from `ml/reports/model_performance_evaluation.json`)
 
-| # | Model Name | Task | Test Metric | Zero-ML Baseline | Overfit Ratio | Validated Status |
-|:---:|:---|:---|:---:|:---:|:---:|:---|
-| **1** | **Freight RF Regressor** | Dry Bulk Index ($BDRY$) | $R^2 = 0.953$<br>$\text{RMSE} = 0.471$ | $R^2 = 0.972$<br>$\text{RMSE} = 0.361$ | `0.73` | 🟡 **OK (Well-Fitted) / No Skill vs Naive** |
-| **2** | **Freight GB Regressor** | Dry Bulk Index ($BDRY$) | $R^2 = 0.952$<br>$\text{RMSE} = 0.474$ | $R^2 = 0.972$<br>$\text{RMSE} = 0.361$ | `0.81` | 🟡 **OK (Well-Fitted) / No Skill vs Naive** |
-| **3** | **VLSFO Bunker Fuel Regressor** | VLSFO Price ($/MT) | $R^2 = 0.779$<br>$\text{RMSE} = \$7.61$ | $R^2 = 0.854$<br>$\text{RMSE} = \$6.18$ | `1.07` | 🟢 **OK (Well-Fitted) / Real Commodity Feed** |
-| **4** | **Charter Action Classifier** | 3-Class Decision Signal | Test Acc: `56.2%` | Majority: `56.2%` | Gap: `10.7%` | 🔴 **OK (Well-Fitted) / Majority Class Collapse** |
+| # | Model | Task | Test metric | Zero-ML naive baseline | Status |
+|:---:|:---|:---|:---:|:---:|:---|
+| **1** | **Freight RF (naive-anchored)** | Freight ETF level, 1-day horizon | $R^2 = 0.985$, RMSE `0.264` | RMSE `0.365` ($R^2 = 0.970$) | 🟢 **BEATS NAIVE by 27.7%** (α=0.75; 5/5 CV folds +23–31%) |
+| **2** | **Freight GB (naive-anchored)** | Freight ETF level, 1-day horizon | $R^2 = 0.977$, RMSE `0.320` | RMSE `0.365` | 🟢 **BEATS NAIVE by 12.2%** (α=0.35) |
+| **3** | **VLSFO Bunker model** | — | — | — | 🔴 **QUARANTINED** — legacy dataset failed the sanity gate (below) |
+| **4** | **Charter Direction Classifier** | 3-class, 5-day freight direction | Acc `33.6%` | Majority `48.5%` | 🟡 **NO EDGE vs majority — excluded from decisions** |
 
----
+## 4. The Bunker Dataset Quarantine (data-governance case study)
 
-## 3. Why High $R^2$ Does NOT Mean "Predicting the Market"
+The legacy `historical_prices.csv` (provenance undocumented, see [DATA_PROVENANCE.md](DATA_PROVENANCE.md)) failed the evaluation's new sanity gate: although bunker~crude correlate at 0.89 across the full sample, a contemporaneous estimation model achieves **R² = −28 on the chronological holdout** — the relationship breaks down exactly where a model would need it. A bunker series that does not co-move with crude fundamentals in the holdout cannot support any model; the data is synthetic or mislabeled.
 
-### The Autoregressive Illusion
-In financial time series (like the Baltic Dry Index or Bunker Fuel spot prices), commodity prices follow a random walk with strong day-to-day autocorrelation:
+Actions taken: the dataset is **excluded from the product entirely**; the bunker figure shown in the terminal is a transparently-labeled `ESTIMATED` value derived from live crude spot (documented conversion, not a model output); and a working bunker model is blocked behind a licensed bunker assessment feed (Data Provenance §3). We publish this failure because detecting and quarantining bad data is precisely the discipline a procurement desk should demand.
 
-$$y_t = y_{t-1} + \epsilon_t$$
+## 5. Why the Classifier Ships With a Losing Record
 
-If a regression model simply predicts $\hat{y}_t \approx y_{t-1}$, its correlation ($R^2$) with $y_t$ will artificially appear to be $> 0.95$. However, this is **not predictive skill** — it is merely learning the identity function of yesterday's price.
+The signal-aware direction classifier (predicting the 5-day freight direction from lagged momentum, MA structure, volatility and drawdown features) was tested across binary/3-class formulations and 5/10/20/30-day horizons. **No formulation cleared the majority-class baseline by a usable margin on the chronological holdout** — short-horizon direction on an ETF-like series is close to a coin flip after costs.
 
-### The Zero-ML Naive Baseline Test
-To detect this illusion, our evaluation framework compares every regressor against a zero-ML baseline that predicts tomorrow's value using yesterday's 7-day moving average ($MA_7$, lagged by 1 day to prevent leakage).
+Shipping a labeled "no edge" beats shipping a collapsed or overfit classifier: the model stays in the platform as a research reference with its full confusion matrix, and every production timing signal is computed from transparent rate deltas and forecast bands instead.
 
-- **Naive Baseline RMSE:** `0.3608`
-- **Random Forest RMSE:** `0.4708` (30.5% *worse* than naive persistence)
-- **Gradient Boosting RMSE:** `0.4744` (31.5% *worse* than naive persistence)
+## 6. What This Means for Users
 
-**Conclusion:** Neither the Random Forest nor the Gradient Boosting model outperforms simple persistence. Therefore, the web application:
-1. **Never claims** the AI can forecast future macro market movements with certainty.
-2. Explicitly labels the 30-day forecast as an **Experimental Trend Corridor** with 95% confidence bands.
-3. Informs judges transparently that freight decisions should be cross-verified against operational physical constraints.
+1. The freight-trend corridor in the terminal is anchored by regressors with a **verified, cross-validated out-of-sample edge** over naive persistence — modest, real, and honestly labeled.
+2. High $R^2$ on a level series still mostly reflects autocorrelation; the naive baseline remains the yardstick that keeps us honest.
+3. Charter timing recommendations are rule-based (rate deltas, landed-cost differentials, physical constraints) and never depend on a model that fails its benchmark.
 
----
+## 7. Summary: Marketing Claims vs. Actual Disclosures
 
-## 4. The Chartering Classifier Class Collapse
-
-### Test Metrics
-- **Test Accuracy:** 56.23%
-- **Macro Precision:** 18.74%
-- **Macro Recall:** 33.33%
-- **Macro F1 Score:** 0.2400
-
-### Confusion Matrix Analysis
-The out-of-sample confusion matrix across 409 test records is:
-
-```
-                  Predicted: HOLD (0)  |  Predicted: NEUTRAL (1)  |  Predicted: CHARTER (2)
-Actual: HOLD (0)           0           |            0             |           63
-Actual: NEUTRAL (1)        0           |            0             |          116
-Actual: CHARTER (2)        0           |            0             |          230
-```
-
-### Root Cause
-Because the training set had an upward trend during the sample window, the decision tree ensemble learned that predicting class 2 ("CHARTER NOW") minimizes cross-entropy loss across the majority class. As a result, **100% of test records were predicted as "CHARTER NOW"**, yielding an apparent 56.2% accuracy while having **zero precision or recall** on classes 0 (HOLD) and 1 (NEUTRAL).
-
-### Decision-Layer Resolution in the Platform
-1. **Removed Uncalibrated Classifier from Autonomous Actions:** The standalone classifier is strictly excluded from making automated charter commitments.
-2. **Deterministic Rate Delta Thresholds:** Chartering recommendation signals ("HOLD / WAIT" vs "CHARTER NOW") are computed transparently from multi-horizon moving average spreads and landed cost variances.
-3. **Full Disclosure in UI:** The judge-facing "ML Honesty & Audit" tab exposes this exact confusion matrix and diagnosis to demonstrate superior technical understanding during competition Q&A.
-
----
-
-## 5. Physical Feasibility vs Machine Learning Scores
-
-A vessel that physically cannot berth at a port due to shallow draft (e.g., a Capesize vessel with 18.2m draft attempting to dock at Haldia port with an 8.5m river limit) must **never** be presented as an acceptable option, regardless of its low cost-per-tonne or high ML score.
-
-The platform enforces:
-- When $\text{Draft}_{\text{vessel}} > \text{Draft}_{\text{port}}$, the vessel status is irrevocably set to:
-  $$\text{Feasibility} = \mathbf{\text{🔴 INFEASIBLE: Draft Exceeds Port Limit}}$$
-- Infeasible vessels are visually demarcated and blocked in the UI comparison table.
-
----
-
-## 6. Summary for Judges
-
-| Misleading Marketing Claim | What the SAIL Intelligence Terminal Actually Discloses |
+| Misleading Marketing Claim | What This Terminal Actually Discloses |
 |:---|:---|
-| *"95% accurate AI freight forecasting"* | *"Model has $R^2=0.95$ due to autocorrelation, but does not beat naive persistence. Forecast displayed with 95% uncertainty band."* |
-| *"AI automatically chooses when to charter"* | *"Classifier exhibits majority class bias (Macro F1: 0.24). Recommendations are driven by transparent rate spreads & landed-cost differentials."* |
+| *"95% accurate AI freight forecasting"* | *"R² 0.985 reflects autocorrelation; the honest measure is the 27.7% RMSE improvement over the naive baseline on a chronological holdout, cross-validated 5/5 folds."* |
+| *"AI automatically chooses when to charter"* | *"The direction classifier shows no edge over the majority baseline and is excluded from decisions; timing signals are transparent rate spreads."* |
 | *"Guaranteed 20% freight cost savings"* | *"Avoided costs are estimated against alternative vessel classes under verified physical port constraints."* |

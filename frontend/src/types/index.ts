@@ -2,6 +2,8 @@
 
 export type ProvenanceType = 'LIVE' | 'HISTORICAL' | 'ESTIMATED' | 'BENCHMARK' | 'DEMO';
 
+export type RiskLevel = 'Low' | 'Medium' | 'High';
+
 export interface PortCoordinate {
   lat: number;
   lon: number;
@@ -28,6 +30,7 @@ export interface VesselEvaluation {
   draft_m: number;
   port_draft_limit_m: number;
   is_feasible: boolean;
+  route_via?: string | null;
   voyage_days: number;
   fuel_burned_mt: number;
   total_cost_usd: number;
@@ -38,9 +41,9 @@ export interface VesselEvaluation {
   demurrage_pmt: number;
   utilization_pct: number;
   availability: string;
-  risk: string;
+  risk: RiskLevel;
   feasibility: string;
-  ai_score: number;
+  decision_score: number;
   cargo_type?: string;
   cargo_stowage_factor?: number;
   cargo_handling_pmt?: number;
@@ -50,7 +53,6 @@ export interface RouteRiskProfile {
   "Origin Weather": string;
   "Port Congestion": string;
   "Waiting Time at Dest": string;
-  "Freight Volatility": string;
   "Overall Route Risk": string;
 }
 
@@ -81,10 +83,29 @@ export interface HistoricalPoint {
   rate_pmt: number;
 }
 
+export interface ForecastBacktest {
+  method: string;
+  window: string;
+  anchor_count: number;
+  horizons: Record<string, {
+    mae_pct: number;
+    directional_hit_pct: number;
+    naive_directional_hit_pct: number;
+    oos_band_coverage_pct: number;
+    band_lo_pct: number;
+    band_hi_pct: number;
+  }>;
+  path_band_lo_pct: number[];
+  path_band_hi_pct: number[];
+}
+
 export interface FreightForecast {
   provenance: string;
   model_status: string;
   confidence_level: string;
+  series_note?: string;
+  signal_threshold_pct?: number;
+  backtest?: ForecastBacktest;
   spot_index: number;
   spot_rate_pmt: number;
   forecast_7d_pmt: number;
@@ -119,6 +140,8 @@ export interface ModelMetrics {
   train_accuracy?: number;
   test_accuracy?: number;
   accuracy_gap?: number;
+  majority_baseline_accuracy?: number;
+  beats_majority_baseline?: boolean;
   precision_macro?: number;
   recall_macro?: number;
   f1_score_macro?: number;
@@ -129,7 +152,9 @@ export interface ModelAuditItem {
   task: string;
   dataset: string;
   train_samples: number;
+  validation_samples?: number;
   test_samples: number;
+  shrinkage_alpha?: number;
   metrics: ModelMetrics;
   status: string;
   diagnosis_reason: string;
@@ -138,14 +163,28 @@ export interface ModelAuditItem {
 
 export interface ModelAuditData {
   evaluation_timestamp: string;
+  methodology?: string;
   summary: {
     total_models_evaluated: number;
+    quarantined_count?: number;
     statuses: Record<string, number>;
     naive_baseline_check: {
       description: string;
       models_checked: number;
       models_beating_naive_baseline: number;
     };
+    classifier_benchmark?: {
+      description: string;
+      test_accuracy: number;
+      majority_baseline_accuracy: number;
+      beats_majority_baseline: boolean;
+    };
   };
   models: Record<string, ModelAuditItem>;
+  quarantined_models?: Array<{
+    model_name: string;
+    dataset: string;
+    status: string;
+    diagnosis_reason: string;
+  }>;
 }

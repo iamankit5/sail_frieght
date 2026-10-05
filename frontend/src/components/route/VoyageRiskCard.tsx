@@ -6,13 +6,11 @@ import { ProvenanceBadge } from '../provenance/ProvenanceBadge';
 
 interface VoyageRiskCardProps {
   riskProfile: RouteRiskProfile;
-  origin: string;
   destination: string;
 }
 
 export const VoyageRiskCard: React.FC<VoyageRiskCardProps> = ({
   riskProfile,
-  origin,
   destination
 }) => {
   return (
@@ -29,7 +27,7 @@ export const VoyageRiskCard: React.FC<VoyageRiskCardProps> = ({
         </div>
 
         <div className="space-y-2.5 text-xs font-mono">
-          <div className="flex items-center justify-between p-2 rounded bg-[#070d17] border border-[#142236]">
+          <div className="flex items-center justify-between p-2.5 rounded-lg inset-well">
             <span className="text-slate-400 flex items-center gap-1.5 font-sans">
               <Wind className="w-3.5 h-3.5 text-sky-400" />
               Origin Weather Disruption:
@@ -42,10 +40,10 @@ export const VoyageRiskCard: React.FC<VoyageRiskCardProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center justify-between p-2 rounded bg-[#070d17] border border-[#142236]">
+          <div className="flex items-center justify-between p-2.5 rounded-lg inset-well">
             <span className="text-slate-400 flex items-center gap-1.5 font-sans">
               <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-              {origin} Congestion:
+              {destination} Congestion:
             </span>
             <span className={`font-bold ${
               riskProfile["Port Congestion"] === 'High' ? 'text-rose-400' : 
@@ -55,7 +53,7 @@ export const VoyageRiskCard: React.FC<VoyageRiskCardProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center justify-between p-2 rounded bg-[#070d17] border border-[#142236]">
+          <div className="flex items-center justify-between p-2.5 rounded-lg inset-well">
             <span className="text-slate-400 flex items-center gap-1.5 font-sans">
               <Clock className="w-3.5 h-3.5 text-purple-400" />
               Est. Discharge Waiting Time:
@@ -64,26 +62,16 @@ export const VoyageRiskCard: React.FC<VoyageRiskCardProps> = ({
               {riskProfile["Waiting Time at Dest"]}
             </span>
           </div>
-
-          <div className="flex items-center justify-between p-2 rounded bg-[#070d17] border border-[#142236]">
-            <span className="text-slate-400 flex items-center gap-1.5 font-sans">
-              <Activity className="w-3.5 h-3.5 text-sky-400" />
-              Ocean Freight Volatility:
-            </span>
-            <span className="font-bold text-amber-400">
-              {riskProfile["Freight Volatility"]}
-            </span>
-          </div>
         </div>
       </div>
 
-      <div className="mt-3 p-2.5 rounded bg-emerald-950/30 border border-emerald-500/30 text-xs">
+      <div className="mt-3 p-3 rounded-lg bg-emerald-500/8 border border-emerald-400/25 text-xs" style={{ boxShadow: '0 0 20px -8px rgba(52,211,153,0.4)' }}>
         <div className="flex items-center gap-1.5 text-emerald-400 font-bold mb-0.5">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
           <span>Overall Lane Status: {riskProfile["Overall Route Risk"]}</span>
         </div>
         <p className="text-[11px] text-slate-300 leading-normal">
-          Corridor parameters within seasonal historical tolerance. No major cyclone or passage blockage flagged for {destination}.
+          Derived from load-port weather, discharge-port congestion and berth delay assumptions for {destination}.
         </p>
       </div>
     </div>

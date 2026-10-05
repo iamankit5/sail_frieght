@@ -28,3 +28,9 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local tooling state
+.freebuff/
+
+# Local agent tooling
+.agents/

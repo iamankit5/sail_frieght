@@ -32,11 +32,14 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
   const simBunker = Math.max(100, baseBunkerPrice * (1 + bunkerShockPct / 100));
   const simFreightMult = Math.max(0.5, 1 + freightShockPct / 100);
 
-  // Run procurement evaluation for simulation scenario
+  // Run procurement evaluation for simulation scenario (client-side engine,
+  // same shared parameter config as the server engine).
   let simEvaluations: VesselEvaluation[] = [];
+  let simError: string | null = null;
   try {
     simEvaluations = evaluateAllVessels(testCargoQty, origin, destination, simBunker, simFreightMult, cargoType);
-  } catch {
+  } catch (err) {
+    simError = err instanceof Error ? err.message : 'Simulation parameters are invalid.';
     simEvaluations = [optimalVessel];
   }
 
@@ -82,6 +85,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
               value={bunkerShockPct}
               onChange={(e) => setBunkerShockPct(Number(e.target.value))}
               className="w-full"
+              style={{ ['--fill' as string]: `${((bunkerShockPct + 30) / 80) * 100}%` }}
             />
             <div className="flex justify-between text-[10px] text-slate-500 font-mono">
               <span>-30%</span>
@@ -105,6 +109,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
               value={freightShockPct}
               onChange={(e) => setFreightShockPct(Number(e.target.value))}
               className="w-full"
+              style={{ ['--fill' as string]: `${((freightShockPct + 20) / 60) * 100}%` }}
             />
             <div className="flex justify-between text-[10px] text-slate-500 font-mono">
               <span>-20%</span>
@@ -126,6 +131,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
               value={testCargoQty}
               onChange={(e) => setTestCargoQty(Number(e.target.value))}
               className="w-full"
+              style={{ ['--fill' as string]: `${((testCargoQty - 25000) / 125000) * 100}%` }}
             />
             <div className="flex justify-between text-[10px] text-slate-500 font-mono">
               <span>25K</span>
@@ -151,26 +157,26 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           <div className="grid grid-cols-3 gap-3 text-xs font-mono mb-3">
             
             {/* Current Baseline Box */}
-            <div className="p-3 rounded bg-[#070c17] border border-[#16253c]">
+            <div className="p-3 rounded-lg inset-well">
               <span className="text-slate-500 block text-[10px] uppercase font-sans">Baseline Scenario</span>
               <div className="text-base font-bold text-slate-200 mt-1">${baseRatePmt.toFixed(2)}/MT</div>
               <div className="text-[11px] text-slate-400 font-sans mt-0.5">
                 Vessel: <strong className="text-slate-200">{optimalVessel.vessel}</strong>
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Score: {optimalVessel.ai_score}/100
+                Score: {optimalVessel.decision_score}/100
               </div>
             </div>
 
             {/* Simulated Outcome Box */}
-            <div className="p-3 rounded bg-[#0b1322] border border-[#233a5c]">
+            <div className="p-3 rounded-lg inset-well" style={{ borderColor: 'rgba(56,189,248,0.4)' }}>
               <span className="text-sky-400 block text-[10px] uppercase font-sans font-bold">What-If Outcome</span>
               <div className="text-base font-bold text-sky-300 mt-1">${simRatePmt.toFixed(2)}/MT</div>
               <div className="text-[11px] text-slate-300 font-sans mt-0.5">
                 Vessel: <strong className="text-sky-400">{simOptimal.vessel}</strong>
               </div>
               <div className="text-[10px] text-slate-400 mt-1">
-                Score: {simOptimal.ai_score}/100
+                Score: {simOptimal.decision_score}/100
               </div>
             </div>
 
@@ -207,7 +213,13 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           </div>
 
           {/* Decision Simulation Outcome Commentary */}
-          <div className="p-3 rounded bg-[#09111e] border border-[#16273e] text-xs">
+          <div className="p-3 rounded-lg inset-well text-xs">
+            {simError && (
+              <div className="flex items-center gap-2 text-amber-400 font-bold mb-1">
+                <ShieldAlert className="w-4 h-4" />
+                <span>Simulation could not recompute: {simError} Showing baseline values.</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 font-bold text-slate-200 mb-1">
               {simOptimal.is_feasible ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />

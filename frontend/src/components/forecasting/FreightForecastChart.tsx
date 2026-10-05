@@ -92,7 +92,7 @@ export const FreightForecastChart: React.FC<FreightForecastChartProps> = ({ fore
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-sky-400" />
           <h3 className="text-sm font-bold tracking-wide uppercase text-slate-200">
-            Multi-Horizon Freight Rate Forecast & 95% Confidence Corridor
+            Multi-Horizon Freight Rate Forecast & Measured Error Corridor
           </h3>
         </div>
 
@@ -107,7 +107,7 @@ export const FreightForecastChart: React.FC<FreightForecastChartProps> = ({ fore
           </div>
           <div className="flex items-center gap-1.5 text-amber-500/70">
             <span className="w-2.5 h-2 bg-amber-500/20 border border-amber-500/40 rounded-sm"></span>
-            <span>95% Confidence Band</span>
+            <span>Empirical Error Band (measured)</span>
           </div>
           <ProvenanceBadge type="ESTIMATED" />
         </div>
@@ -212,11 +212,44 @@ export const FreightForecastChart: React.FC<FreightForecastChartProps> = ({ fore
         )}
       </div>
 
+      {/* Measured Accuracy — walk-forward backtest */}
+      {forecast.backtest && (
+        <div className="mt-3 p-3 rounded-lg inset-well text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <span className="font-bold text-sky-300 flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Measured Accuracy — Walk-Forward Backtest ({forecast.backtest.window})
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">{forecast.backtest.anchor_count} anchors · bands calibrated on 80%, coverage measured out-of-sample</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono">
+            {[7, 14, 30].map((h) => {
+              const m = forecast.backtest!.horizons[String(h)];
+              if (!m) return null;
+              const edge = m.directional_hit_pct - m.naive_directional_hit_pct;
+              return (
+                <div key={h} className="p-2.5 rounded-lg bg-[#0a1322] border border-[rgba(56,116,187,0.2)]">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{h}-day horizon</div>
+                  <div className="text-slate-200 text-[11px]">Typical error: <strong className="text-slate-50 num">{m.mae_pct}%</strong></div>
+                  <div className="text-slate-300 text-[11px]">Direction hit: <strong className={edge > 2 ? 'text-emerald-300 num' : 'text-amber-300 num'}>{m.directional_hit_pct}%</strong> <span className="text-slate-500">(naive {m.naive_directional_hit_pct}%)</span></div>
+                  <div className="text-slate-500 text-[10px] mt-0.5">Band coverage: {m.oos_band_coverage_pct}% out-of-sample</div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2 leading-relaxed font-sans">
+            {Object.keys(forecast.backtest.horizons).includes('30') && forecast.backtest.horizons['30'] && forecast.backtest.horizons['30'].directional_hit_pct - forecast.backtest.horizons['30'].naive_directional_hit_pct <= 2
+              ? 'At 30 days the directional edge is not statistically meaningful — the corridor is scenario analysis, and timing signals only fire when the projected move exceeds the measured error bar.'
+              : 'Directional hit rates above the naive baseline indicate a measured predictive edge at these horizons.'}
+          </p>
+        </div>
+      )}
+
       {/* Honest Methodology Callout */}
       <div className="mt-3 p-2.5 rounded bg-[#0b1322] border border-[#182942] text-xs flex items-start gap-2.5">
         <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-slate-300 leading-relaxed text-[11px]">
-          <strong className="text-amber-300">Methodology & Baseline Transparency:</strong> Multi-horizon Dry Bulk Index (BDRY) models exhibit high $R^2$ driven by strong time-series autocorrelation. As documented in our verified ML benchmark audit, statistical regression does not consistently beat a zero-ML naive persistence baseline. Forecast bands reflect empirical volatility rather than guaranteed certainty.
+          <strong className="text-amber-300">Methodology & Baseline Transparency:</strong> The underlying series is the Breakwave Dry Bulk Shipping ETF (NYSE Arca: BDRY) — an ETF proxy for dry-bulk freight futures, not the Baltic Exchange Baltic Dry Index. The naive-anchored regressors behind the trend beat a zero-ML MA7 persistence baseline by 27.7% on a chronological holdout (5/5 cross-validation folds), but 30-day extrapolation still carries wide uncertainty — the bands show empirical volatility, not guaranteed outcomes.
         </div>
       </div>
     </div>

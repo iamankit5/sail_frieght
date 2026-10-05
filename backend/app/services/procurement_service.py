@@ -13,8 +13,10 @@ from procurement.procurement_engine import (
     PORT_COORDINATES,
     ROUTES,
     VESSEL_SPECS,
-    DATA_CITATIONS
+    CARGO_PROFILES,
+    DATA_CITATIONS,
 )
+
 
 class ProcurementService:
     @staticmethod
@@ -28,6 +30,10 @@ class ProcurementService:
     @staticmethod
     def get_vessel_specs():
         return VESSEL_SPECS
+
+    @staticmethod
+    def get_cargo_profiles():
+        return CARGO_PROFILES
 
     @staticmethod
     def get_data_citations():

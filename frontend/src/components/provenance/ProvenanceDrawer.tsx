@@ -83,7 +83,10 @@ export const ProvenanceDrawer: React.FC<ProvenanceDrawerProps> = ({ isOpen, onCl
               <div>
                 <span className="font-semibold text-slate-200">Nautical Ocean Distances:</span>
                 <p className="text-slate-400 mt-0.5">
-                  Extracted from operational Sea-Distances.org routing tables (e.g. Newcastle to Paradip = 4,580 NM; Samarinda to Paradip = 2,180 NM). Voyage duration calculated as: <code className="text-amber-300 font-mono">Distance / (Speed_Knots × 24)</code>.
+                  Self-derived: great-circle (haversine) distance between public port coordinates, multiplied by documented
+                  detour factors; US Gulf lanes routed via Suez Canal waypoints (method &amp; generator:{' '}
+                  <code className="text-amber-300 font-mono">shared/derive_distances.py</code>). Voyage duration calculated as:{' '}
+                  <code className="text-amber-300 font-mono">Distance / (Speed_Knots × 24)</code>.
                 </p>
               </div>
             </div>
@@ -91,9 +94,12 @@ export const ProvenanceDrawer: React.FC<ProvenanceDrawerProps> = ({ isOpen, onCl
             <div className="p-3 rounded bg-[#090f1d] border border-[#192b42] flex items-start gap-3">
               <Database className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-slate-200">Bunker Fuel & Crude Conversion Factor:</span>
+                <span className="font-semibold text-slate-200">Bunker Fuel Estimate:</span>
                 <p className="text-slate-400 mt-0.5">
-                  Marine VLSFO $/MT estimate is derived from WTI/Brent crude oil spot (<code className="text-emerald-300 font-mono">CL=F</code>) via standard maritime conversion ratio of <code className="text-emerald-300 font-mono">7.33 bbl/MT</code>. If market API is offline, fallback is the validated Clarksons spot benchmark ($625.0/MT).
+                  Bunker $/MT is an <span className="text-amber-400 font-bold">ESTIMATED</span> value derived from live crude
+                  spot via a crude-equivalent energy conversion (<code className="text-emerald-300 font-mono">7.33 bbl/MT</code>).
+                  It is not a published VLSFO assessment — connect a licensed bunker feed for contract-grade numbers. No
+                  fallback price is ever substituted: if the market API is unavailable, the terminal shows no data.
                 </p>
               </div>
             </div>
@@ -101,9 +107,11 @@ export const ProvenanceDrawer: React.FC<ProvenanceDrawerProps> = ({ isOpen, onCl
             <div className="p-3 rounded bg-[#090f1d] border border-[#192b42] flex items-start gap-3">
               <FileSpreadsheet className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-slate-200">Vessel Fleet Specifications & Hire Benchmarks:</span>
+                <span className="font-semibold text-slate-200">Vessel Fleet Specifications & Hire Assumptions:</span>
                 <p className="text-slate-400 mt-0.5">
-                  Daily hire rates, speeds, and average deadweight tonnages (Handysize 35k MT @ $11.5k/d; Supramax 55k MT @ $14.5k/d; Panamax 75k MT @ $16.5k/d; Capesize 180k MT @ $24.5k/d) reflect Clarksons Research 2024 spot dry bulk market ranges.
+                  Daily hire rates, speeds and average deadweight tonnages are <span className="text-amber-400 font-bold">operator-editable
+                  planning assumptions</span> maintained in the platform configuration — not data licensed from any commercial
+                  provider. Validate them against your own broker intelligence before committing fixtures.
                 </p>
               </div>
             </div>

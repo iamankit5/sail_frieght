@@ -1,0 +1,300 @@
+{
+  "_meta": {
+    "description": "Single source of truth for procurement engine parameters. Consumed by both the Python engine (procurement/procurement_engine.py) and the TypeScript engine (frontend/src/lib/procurementEngine.ts).",
+    "distance_method": "Great-circle (haversine) distances between public port coordinates, multiplied by documented detour factors; US Gulf lanes via Suez Canal waypoints. Derivation: shared/derive_distances.py (re-run to regenerate this file).",
+    "assumption_disclosure": "Vessel hire rates, fuel consumption, handling fees, demurrage buffers and cost constants are operator-editable planning assumptions, not data licensed from any commercial provider. Operators must validate all assumptions against their own broker intelligence before commercial use.",
+    "generated_at": "2026-10-05T18:55:50.203503+00:00"
+  },
+  "cost_constants": {
+    "base_port_charge_usd": 35000,
+    "suez_canal_fee_usd": 8500,
+    "demurrage_buffer_usd": {
+      "High": 12000,
+      "Medium": 6000,
+      "Low": 2500
+    },
+    "freight_usd_per_mt_per_index_point": 0.24,
+    "vessel_routing": {
+      "USA (New Orleans)": {
+        "Suez": [
+          "Handysize",
+          "Supramax",
+          "Panamax"
+        ],
+        "Cape of Good Hope": [
+          "Capesize"
+        ]
+      }
+    },
+    "route_fees_usd": {
+      "Suez": 8500,
+      "Cape of Good Hope": 0
+    }
+  },
+  "ports": {
+    "Australia (Newcastle)": {
+      "lat": -32.9283,
+      "lon": 151.7817,
+      "region": "Australia"
+    },
+    "Australia (Hay Point)": {
+      "lat": -21.2858,
+      "lon": 149.2997,
+      "region": "Australia"
+    },
+    "Indonesia (Samarinda)": {
+      "lat": -0.5021,
+      "lon": 117.1537,
+      "region": "Indonesia"
+    },
+    "Mozambique (Maputo)": {
+      "lat": -25.9692,
+      "lon": 32.5732,
+      "region": "Mozambique"
+    },
+    "USA (New Orleans)": {
+      "lat": 29.9511,
+      "lon": -90.0715,
+      "region": "USA"
+    },
+    "Russia (Vladivostok)": {
+      "lat": 43.1155,
+      "lon": 131.8855,
+      "region": "Russia"
+    },
+    "Paradip": {
+      "lat": 20.2644,
+      "lon": 86.6083,
+      "region": "India"
+    },
+    "Haldia": {
+      "lat": 22.0257,
+      "lon": 88.0583,
+      "region": "India"
+    },
+    "Vizag": {
+      "lat": 17.6868,
+      "lon": 83.2185,
+      "region": "India"
+    },
+    "Dhamra": {
+      "lat": 20.8317,
+      "lon": 86.9583,
+      "region": "India"
+    }
+  },
+  "routes": {
+    "Australia (Newcastle)": {
+      "Paradip": 5260,
+      "Haldia": 5260,
+      "Vizag": 5310,
+      "Dhamra": 5260
+    },
+    "Australia (Hay Point)": {
+      "Paradip": 4760,
+      "Haldia": 4740,
+      "Vizag": 4850,
+      "Dhamra": 4760
+    },
+    "Indonesia (Samarinda)": {
+      "Paradip": 2380,
+      "Haldia": 2370,
+      "Vizag": 2490,
+      "Dhamra": 2380
+    },
+    "Mozambique (Maputo)": {
+      "Paradip": 4490,
+      "Haldia": 4630,
+      "Vizag": 4310,
+      "Dhamra": 4530
+    },
+    "USA (New Orleans)": {
+      "Paradip": 10470,
+      "Haldia": 10570,
+      "Vizag": 10260,
+      "Dhamra": 10500
+    },
+    "Russia (Vladivostok)": {
+      "Paradip": 2880,
+      "Haldia": 2740,
+      "Vizag": 3150,
+      "Dhamra": 2840
+    }
+  },
+  "routes_alternates": {
+    "USA (New Orleans)": {
+      "Cape of Good Hope": {
+        "Paradip": 13330,
+        "Haldia": 13470,
+        "Vizag": 13070,
+        "Dhamra": 13370
+      }
+    }
+  },
+  "route_methods": {
+    "Australia (Newcastle)": {
+      "Paradip": "Great-circle x1.07 detour factor",
+      "Haldia": "Great-circle x1.07 detour factor",
+      "Vizag": "Great-circle x1.07 detour factor",
+      "Dhamra": "Great-circle x1.07 detour factor"
+    },
+    "Australia (Hay Point)": {
+      "Paradip": "Great-circle x1.07 detour factor",
+      "Haldia": "Great-circle x1.07 detour factor",
+      "Vizag": "Great-circle x1.07 detour factor",
+      "Dhamra": "Great-circle x1.07 detour factor"
+    },
+    "Indonesia (Samarinda)": {
+      "Paradip": "Great-circle x1.09 detour factor",
+      "Haldia": "Great-circle x1.09 detour factor",
+      "Vizag": "Great-circle x1.09 detour factor",
+      "Dhamra": "Great-circle x1.09 detour factor"
+    },
+    "Mozambique (Maputo)": {
+      "Paradip": "Great-circle x1.07 detour factor",
+      "Haldia": "Great-circle x1.07 detour factor",
+      "Vizag": "Great-circle x1.09 detour factor",
+      "Dhamra": "Great-circle x1.07 detour factor"
+    },
+    "USA (New Orleans)": {
+      "Paradip": "Suez Canal route (4 waypoint legs x1.06 + 120NM canal)",
+      "Haldia": "Suez Canal route (4 waypoint legs x1.06 + 120NM canal)",
+      "Vizag": "Suez Canal route (4 waypoint legs x1.06 + 120NM canal)",
+      "Dhamra": "Suez Canal route (4 waypoint legs x1.06 + 120NM canal)"
+    },
+    "Russia (Vladivostok)": {
+      "Paradip": "Great-circle x1.09 detour factor",
+      "Haldia": "Great-circle x1.09 detour factor",
+      "Vizag": "Great-circle x1.09 detour factor",
+      "Dhamra": "Great-circle x1.09 detour factor"
+    }
+  },
+  "vessels": {
+    "Handysize": {
+      "avg_cap": 35000,
+      "speed_knots": 13,
+      "fuel_per_day": 20,
+      "daily_hire_rate": 11500,
+      "draft_m": 10.0,
+      "availability": "4 vessels",
+      "risk": "Medium"
+    },
+    "Supramax": {
+      "avg_cap": 55000,
+      "speed_knots": 14,
+      "fuel_per_day": 25,
+      "daily_hire_rate": 14500,
+      "draft_m": 11.5,
+      "availability": "3 vessels",
+      "risk": "Medium"
+    },
+    "Panamax": {
+      "avg_cap": 75000,
+      "speed_knots": 14,
+      "fuel_per_day": 30,
+      "daily_hire_rate": 16500,
+      "draft_m": 13.5,
+      "availability": "8 vessels",
+      "risk": "Low"
+    },
+    "Capesize": {
+      "avg_cap": 180000,
+      "speed_knots": 13,
+      "fuel_per_day": 45,
+      "daily_hire_rate": 24500,
+      "draft_m": 18.2,
+      "availability": "1 vessel",
+      "risk": "High"
+    }
+  },
+  "cargo_profiles": {
+    "Coking Coal": {
+      "stowage_factor_m3_mt": 1.25,
+      "handling_fee_pmt": 3.2,
+      "discharge_rate_tpd": 25000,
+      "demurrage_multiplier": 1.0,
+      "description": "Prime Hard Coking Coal for blast furnace steel production."
+    },
+    "Thermal Coal": {
+      "stowage_factor_m3_mt": 1.38,
+      "handling_fee_pmt": 2.8,
+      "discharge_rate_tpd": 20000,
+      "demurrage_multiplier": 1.35,
+      "description": "Non-coking thermal coal for captive power plant boilers."
+    },
+    "Iron Ore Pellets": {
+      "stowage_factor_m3_mt": 0.52,
+      "handling_fee_pmt": 4.5,
+      "discharge_rate_tpd": 35000,
+      "demurrage_multiplier": 0.85,
+      "description": "High-grade iron ore pellets for direct reduction and blast furnace feed."
+    },
+    "Limestone": {
+      "stowage_factor_m3_mt": 1.15,
+      "handling_fee_pmt": 3.6,
+      "discharge_rate_tpd": 18000,
+      "demurrage_multiplier": 1.1,
+      "description": "High-calcium limestone flux for basic oxygen furnace slag formation."
+    }
+  },
+  "port_operations": {
+    "Paradip": {
+      "waiting_days": 2.5,
+      "draft_limit_m": 14.5
+    },
+    "Haldia": {
+      "waiting_days": 3.8,
+      "draft_limit_m": 8.5
+    },
+    "Vizag": {
+      "waiting_days": 2.0,
+      "draft_limit_m": 14.5
+    },
+    "Dhamra": {
+      "waiting_days": 1.8,
+      "draft_limit_m": 18.0
+    }
+  },
+  "load_port_risk": {
+    "Australia (Newcastle)": {
+      "weather_risk": "Low",
+      "congestion_risk": "Medium"
+    },
+    "Australia (Hay Point)": {
+      "weather_risk": "Low",
+      "congestion_risk": "Low"
+    },
+    "Indonesia (Samarinda)": {
+      "weather_risk": "Medium",
+      "congestion_risk": "Medium"
+    },
+    "Mozambique (Maputo)": {
+      "weather_risk": "Low",
+      "congestion_risk": "Low"
+    },
+    "USA (New Orleans)": {
+      "weather_risk": "Medium",
+      "congestion_risk": "High"
+    },
+    "Russia (Vladivostok)": {
+      "weather_risk": "High",
+      "congestion_risk": "Low"
+    },
+    "Paradip": {
+      "weather_risk": "Low",
+      "congestion_risk": "Medium"
+    },
+    "Haldia": {
+      "weather_risk": "Medium",
+      "congestion_risk": "High"
+    },
+    "Vizag": {
+      "weather_risk": "Low",
+      "congestion_risk": "Low"
+    },
+    "Dhamra": {
+      "weather_risk": "Low",
+      "congestion_risk": "Low"
+    }
+  }
+}

@@ -28,12 +28,12 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
     return ((rate * cargoQty * marketData.usd_inr_rate) / 100000).toFixed(1);
   };
 
-  const computeVariance = (rate: number) => {
+  const computeVariance = (rate: number): { text: string; delta: number } => {
     const diff = rate - spotRate;
     const diffLakhs = Math.abs((diff * cargoQty * marketData.usd_inr_rate) / 100000).toFixed(1);
-    if (Math.abs(diff) < 0.05) return "— Baseline —";
-    if (diff > 0) return `📈 Added Cost: ₹${diffLakhs} L (+${((diff/spotRate)*100).toFixed(1)}%)`;
-    return `📉 Estimated Savings: ₹${diffLakhs} L (${((diff/spotRate)*100).toFixed(1)}%)`;
+    if (Math.abs(diff) < 0.05) return { text: "— Baseline —", delta: 0 };
+    if (diff > 0) return { text: `Added Cost: ₹${diffLakhs} L (+${((diff/spotRate)*100).toFixed(1)}%)`, delta: diff };
+    return { text: `Estimated Savings: ₹${diffLakhs} L (${((diff/spotRate)*100).toFixed(1)}%)`, delta: diff };
   };
 
   const rows = [
@@ -43,8 +43,8 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
       expectedRate: `$${spotRate.toFixed(2)}/MT`,
       confidenceBand: "Baseline Spot (Fixed)",
       totalExpense: `₹${computeExpenseLakhs(spotRate)} Lakhs`,
-      variance: "— Baseline Reference —",
-      isRecommended: forecast.pct_change_30d > 1.0
+      variance: { text: "— Baseline Reference —", delta: 0 },
+      isRecommended: forecast.recommended_action === 'CHARTER NOW'
     },
     {
       window: "Wait 7 Days",
@@ -71,7 +71,7 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
       confidenceBand: `[$${f30Item.lower_rate_pmt.toFixed(2)} – $${f30Item.upper_rate_pmt.toFixed(2)}]`,
       totalExpense: `₹${computeExpenseLakhs(f30)} Lakhs`,
       variance: computeVariance(f30),
-      isRecommended: forecast.pct_change_30d <= -1.0
+      isRecommended: forecast.recommended_action === 'HOLD / WAIT'
     }
   ];
 
@@ -87,13 +87,13 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
         <ProvenanceBadge type="ESTIMATED" />
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg border border-[rgba(56,116,187,0.12)]">
         <table className="w-full text-left text-xs font-mono">
           <thead>
             <tr className="border-b border-[#17253b] text-slate-400 bg-[#070c17]/60 uppercase text-[11px] tracking-wider">
               <th className="py-2.5 px-3">Tender Release Window</th>
               <th className="py-2.5 px-3">Expected Landed Rate</th>
-              <th className="py-2.5 px-3">95% Uncertainty Corridor</th>
+              <th className="py-2.5 px-3">Empirical Uncertainty Corridor</th>
               <th className="py-2.5 px-3">Total Freight Outlay</th>
               <th className="py-2.5 px-3">Projected Cost Delta</th>
             </tr>
@@ -102,14 +102,20 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
             {rows.map((r) => (
               <tr 
                 key={r.window}
-                className={`transition-colors ${r.isRecommended ? 'bg-sky-950/30 text-slate-100 font-semibold' : 'hover:bg-[#0e1728] text-slate-300'}`}
+                className={`transition-colors ${r.isRecommended ? 'bg-sky-500/[0.08] text-slate-100 font-semibold' : 'hover:bg-[#0d1729] text-slate-300'}`}
               >
-                <td className="py-3 px-3 whitespace-nowrap">
+                <td
+                  className="py-3 px-3 whitespace-nowrap"
+                  style={r.isRecommended ? { boxShadow: 'inset 3px 0 0 0 #38bdf8' } : undefined}
+                >
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>{r.window}</span>
                     {r.isRecommended && (
-                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-sky-600 text-white">
+                      <span
+                        className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md text-white"
+                        style={{ background: 'linear-gradient(135deg, #0369a1, #0284c7)', boxShadow: '0 0 12px -3px rgba(56,189,248,0.6)' }}
+                      >
                         Recommended
                       </span>
                     )}
@@ -125,8 +131,8 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
                   {r.totalExpense}
                 </td>
                 <td className="py-3 px-3 whitespace-nowrap">
-                  <span className={r.variance.includes('Added') ? 'text-rose-400' : (r.variance.includes('Savings') ? 'text-emerald-400' : 'text-slate-400')}>
-                    {r.variance}
+                  <span className={r.variance.delta > 0 ? 'text-rose-400' : (r.variance.delta < 0 ? 'text-emerald-400' : 'text-slate-400')}>
+                    {r.variance.text}
                   </span>
                 </td>
               </tr>
@@ -135,12 +141,14 @@ export const TimingSimulator: React.FC<TimingSimulatorProps> = ({
         </table>
       </div>
 
-      <div className="mt-3 p-2 rounded bg-[#09111e] border border-[#16253c] text-xs text-slate-300 flex items-center gap-2">
+      <div className="mt-3 p-2.5 rounded-lg inset-well text-xs text-slate-300 flex items-center gap-2">
         <AlertCircle className="w-4 h-4 text-sky-400 shrink-0" />
         <span>
-          <strong>Operational Strategy:</strong> {forecast.pct_change_30d > 1.0 
-            ? 'Rising freight momentum suggests fixing vessel fixture today avoids cost inflation over 7-30 days.' 
-            : 'Downward or stable rate pressure suggests staging tender release into the +14d window.'}
+          <strong>Operational Strategy:</strong> {forecast.recommended_action === 'CHARTER NOW'
+            ? 'Rising freight momentum beyond the measured error bar suggests fixing the fixture today to avoid 7-30 day cost inflation.'
+            : forecast.recommended_action === 'HOLD / WAIT'
+              ? 'Downward rate pressure beyond the measured error bar suggests staging tender release into the +14d window.'
+              : 'The projected 30-day move sits inside the measured error bar — no model-defensible timing edge; choose the window on commercial grounds.'}
         </span>
       </div>
     </div>

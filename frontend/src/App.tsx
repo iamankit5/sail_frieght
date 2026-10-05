@@ -1,5 +1,5 @@
 // frontend/src/App.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppHeader } from './components/layout/AppHeader';
 import { ExecutiveHero } from './components/procurement/ExecutiveHero';
 import { ProcurementControls } from './components/procurement/ProcurementControls';
@@ -16,20 +16,25 @@ import { ModelHonestyAudit } from './components/audit/ModelHonestyAudit';
 import { apiService } from './services/api';
 import { PORT_COORDINATES } from './lib/procurementEngine';
 import { DEFAULT_MARKET } from './data/defaultMarket';
-import { 
-  MarketData, 
-  VesselEvaluation, 
-  RouteRiskProfile, 
-  FreightForecast, 
-  DailyWeather, 
-  ModelAuditData 
+import { Skeleton } from './components/ui/Primitives';
+import {
+  MarketData,
+  VesselEvaluation,
+  RouteRiskProfile,
+  FreightForecast,
+  DailyWeather,
+  ModelAuditData
 } from './types';
-import { ServerCrash, Terminal, RefreshCw, Activity, Cpu } from 'lucide-react';
+import { ServerCrash, RefreshCw, AlertCircle } from 'lucide-react';
+
+// Debounce window for parameter-driven re-evaluation (slider drags etc.)
+const EVALUATION_DEBOUNCE_MS = 300;
+// Poll interval while the API service is unreachable.
+const RECONNECT_POLL_MS = 10_000;
 
 export const App: React.FC = () => {
   // Navigation & Mode States
   const [activeTab, setActiveTab] = useState<'procurement' | 'audit'>('procurement');
-  const [judgeMode, setJudgeMode] = useState<boolean>(true);
   const [isProvenanceOpen, setIsProvenanceOpen] = useState<boolean>(false);
   const [backendConnected, setBackendConnected] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -42,31 +47,20 @@ export const App: React.FC = () => {
   const [priceMode, setPriceMode] = useState<'live' | 'manual'>('live');
   const [bunkerPrice, setBunkerPrice] = useState<number>(0);
 
-  // Data States (No fake or hardcoded rates)
+  // Data States (no hardcoded fallback rates: data comes only from the API)
   const [marketData, setMarketData] = useState<MarketData>(DEFAULT_MARKET);
   const [evaluations, setEvaluations] = useState<VesselEvaluation[]>([]);
+  const [evalError, setEvalError] = useState<string | null>(null);
   const [riskProfile, setRiskProfile] = useState<RouteRiskProfile | null>(null);
   const [forecast, setForecast] = useState<FreightForecast | null>(null);
   const [originWeather, setOriginWeather] = useState<DailyWeather[]>([]);
   const [destWeather, setDestWeather] = useState<DailyWeather[]>([]);
   const [auditData, setAuditData] = useState<ModelAuditData | null>(null);
 
-  // Handle Judge Demo Mode Toggle
-  const handleToggleJudgeMode = (val: boolean) => {
-    setJudgeMode(val);
-    if (val) {
-      setOrigin('Australia (Newcastle)');
-      setDestination('Paradip');
-      setCargoQty(75000);
-      setCargoType('Coking Coal');
-      setPriceMode('live');
-      if (marketData.bunker_price_usd_mt > 0) {
-        setBunkerPrice(marketData.bunker_price_usd_mt);
-      }
-    }
-  };
+  const scenarioRef = useRef({ cargoQty, origin, destination, cargoType, priceMode, bunkerPrice });
+  scenarioRef.current = { cargoQty, origin, destination, cargoType, priceMode, bunkerPrice };
 
-  // Run procurement calculation through Flask backend
+  // Run procurement calculation through the API
   const runEvaluation = useCallback(async (
     qty: number,
     orig: string,
@@ -75,6 +69,12 @@ export const App: React.FC = () => {
     material: string
   ) => {
     const res = await apiService.evaluateVessels(qty, orig, dest, bunker, 1.0, material);
+    if (res.error) {
+      setEvalError(res.error);
+      setEvaluations([]);
+      return;
+    }
+    setEvalError(null);
     setEvaluations(res.evaluations || []);
     if (res.risk_profile) {
       setRiskProfile(res.risk_profile);
@@ -95,7 +95,9 @@ export const App: React.FC = () => {
     setDestWeather(wDest);
   }, []);
 
-  // Initial Load from Flask backend
+  // Bootstrap: runs ONCE on mount (and on manual refresh). Fetches connection
+  // status and singleton datasets; scenario evaluation is handled separately
+  // by the parameter effect below so slider changes never re-trigger this.
   const initData = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -111,19 +113,19 @@ export const App: React.FC = () => {
 
         if (market) {
           setMarketData(market);
-          const activeBunker = priceMode === 'live' ? market.bunker_price_usd_mt : (bunkerPrice || market.bunker_price_usd_mt);
+          const { priceMode: mode, bunkerPrice: manualBunker } = scenarioRef.current;
+          const activeBunker = mode === 'live'
+            ? market.bunker_price_usd_mt
+            : (manualBunker || market.bunker_price_usd_mt);
           setBunkerPrice(activeBunker);
-
-          await Promise.all([
-            runEvaluation(cargoQty, origin, destination, activeBunker, cargoType),
-            loadWeather(origin, destination),
-          ]);
         }
 
         if (fc) setForecast(fc);
         if (audits) setAuditData(audits);
+
+        const { origin: o, destination: d } = scenarioRef.current;
+        loadWeather(o, d);
       } else {
-        // Clear all data when backend is not running
         setEvaluations([]);
         setRiskProfile(null);
         setForecast(null);
@@ -136,14 +138,14 @@ export const App: React.FC = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [bunkerPrice, cargoQty, cargoType, destination, loadWeather, origin, priceMode, runEvaluation]);
+  }, [loadWeather]);
 
   // Initial mount check
   useEffect(() => {
     initData();
   }, [initData]);
 
-  // Auto-poll Flask backend every 3 seconds if disconnected
+  // Poll the API while disconnected (gentle interval; the header shows status).
   useEffect(() => {
     if (backendConnected) return;
     const interval = setInterval(async () => {
@@ -151,32 +153,46 @@ export const App: React.FC = () => {
       if (health.isConnected) {
         initData();
       }
-    }, 3000);
+    }, RECONNECT_POLL_MS);
     return () => clearInterval(interval);
   }, [backendConnected, initData]);
 
-  // Trigger evaluation when scenario parameters change (including cargoType!)
+  // Re-evaluate when scenario parameters change (debounced; runs only when
+  // the service is connected and an active bunker price exists).
   useEffect(() => {
     if (!backendConnected) return;
     const activeBunker = priceMode === 'live' ? marketData.bunker_price_usd_mt : bunkerPrice;
-    if (activeBunker > 0) {
-      runEvaluation(cargoQty, origin, destination, activeBunker, cargoType);
-      loadWeather(origin, destination);
-    }
-  }, [cargoQty, cargoType, origin, destination, priceMode, bunkerPrice, marketData.bunker_price_usd_mt, backendConnected, runEvaluation, loadWeather]);
+    if (!(activeBunker > 0)) return;
 
-  const optimalVessel = evaluations[0];
-  const alternativeVessel = evaluations[1];
+    const handle = setTimeout(() => {
+      runEvaluation(cargoQty, origin, destination, activeBunker, cargoType);
+    }, EVALUATION_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [cargoQty, cargoType, origin, destination, priceMode, bunkerPrice, marketData.bunker_price_usd_mt, backendConnected, runEvaluation]);
+
+  // Weather follows the selected ports (debounced, non-critical).
+  useEffect(() => {
+    if (!backendConnected) return;
+    const handle = setTimeout(() => {
+      loadWeather(origin, destination);
+    }, EVALUATION_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [origin, destination, backendConnected, loadWeather]);
+
+  // Feasibility-first recommendation: never showcase a draft-blocked vessel
+  // as the optimal charter; if no class can berth, the hero says so.
+  const optimalVessel = evaluations.find(v => v.is_feasible);
+  const alternativeVessel = optimalVessel
+    ? evaluations.find(v => v.is_feasible && v.vessel !== optimalVessel.vessel)
+    : undefined;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#060911] text-[#e2e8f0]">
-      
+
       {/* Top Application Header */}
       <AppHeader
         marketData={marketData}
         backendConnected={backendConnected}
-        judgeMode={judgeMode}
-        onToggleJudgeMode={handleToggleJudgeMode}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenProvenance={() => setIsProvenanceOpen(true)}
@@ -186,8 +202,8 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1700px] w-full mx-auto px-4 py-5">
-        
-        {/* Strict Backend Offline Gate: If Flask is not running, NO DATA is shown */}
+
+        {/* Offline Gate: no fabricated data is shown while disconnected */}
         {!backendConnected ? (
           <div className="my-10 max-w-2xl mx-auto rounded-xl bg-gradient-to-b from-[#0e1626] to-[#080d17] border border-rose-600/40 p-8 text-center shadow-2xl">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-950/80 border border-rose-500/60 flex items-center justify-center text-rose-400">
@@ -195,29 +211,18 @@ export const App: React.FC = () => {
             </div>
 
             <span className="inline-block px-3 py-1 rounded bg-rose-950 border border-rose-600/60 text-rose-300 font-mono text-xs font-bold uppercase tracking-wider mb-2">
-              ● Flask Backend Offline (Required)
+              ● Intelligence Service Unreachable
             </span>
 
             <h2 className="text-2xl font-bold text-slate-100 mb-2">
-              Live Python Backend Service Disconnected
+              Cannot Connect to the Decision API
             </h2>
 
             <p className="text-sm text-slate-300 leading-relaxed mb-6">
-              As per strict maritime intelligence guidelines, <strong className="text-rose-400">all hardcoded fallback data (including fixed USD/INR rates) has been removed</strong>. No data can be displayed until the Flask API service is active.
+              This terminal never displays estimated market or cost data without a live connection to
+              the decision engine. Verify your network connection and the configured API endpoint
+              (<span className="font-mono text-sky-300">VITE_API_URL</span>), or contact your administrator.
             </p>
-
-            {/* Launch Instructions */}
-            <div className="bg-[#050810] border border-[#1a2b42] rounded-lg p-4 text-left mb-6 font-mono text-xs">
-              <div className="flex items-center gap-2 text-slate-400 mb-2 pb-2 border-b border-[#142236]">
-                <Terminal className="w-4 h-4 text-sky-400" />
-                <span>To Start Flask REST API Server:</span>
-              </div>
-              <p className="text-slate-400 mb-1"># In your repository terminal, run:</p>
-              <div className="bg-[#0a101d] p-2.5 rounded border border-[#233857] text-sky-300 font-bold flex items-center justify-between">
-                <span>python backend/run.py</span>
-                <span className="text-[10px] text-slate-500 font-normal">Port: 5000</span>
-              </div>
-            </div>
 
             {/* Auto-reconnect & Manual Retry */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -231,14 +236,25 @@ export const App: React.FC = () => {
               </button>
               <div className="text-xs text-slate-400 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                <span>Auto-detecting port 5000 every 3s...</span>
+                <span>Auto-retrying every {RECONNECT_POLL_MS / 1000}s...</span>
               </div>
             </div>
           </div>
         ) : activeTab === 'procurement' ? (
           <div>
+            {/* Evaluation error banner */}
+            {evalError && (
+              <div className="mb-5 rounded-lg bg-gradient-to-b from-[#1c0e12] to-[#0c0709] border border-rose-900/60 p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <span className="font-bold text-rose-300 block mb-0.5">Evaluation Error</span>
+                  <span className="text-slate-300">{evalError}</span>
+                </div>
+              </div>
+            )}
+
             {/* 1. Hero Decision Overview */}
-            {optimalVessel && forecast ? (
+            {forecast && (evaluations.length > 0 || evalError) ? (
               <ExecutiveHero
                 optimalVessel={optimalVessel}
                 alternativeVessel={alternativeVessel}
@@ -250,9 +266,28 @@ export const App: React.FC = () => {
                 marketData={marketData}
               />
             ) : (
-              <div className="terminal-card p-6 mb-5 text-center text-slate-400 font-mono text-xs flex items-center justify-center gap-2">
-                <Activity className="w-4 h-4 animate-spin text-sky-400" />
-                <span>Computing live optimal charter evaluation from Flask engine...</span>
+              /* Skeleton hero while the engine computes */
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
+                <div className="lg:col-span-7 terminal-card p-5">
+                  <div className="flex justify-between mb-4">
+                    <Skeleton className="h-6 w-56" />
+                    <Skeleton className="h-6 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-3/4 mb-3" />
+                  <Skeleton className="h-4 w-1/2 mb-5" />
+                  <div className="grid grid-cols-4 gap-2.5">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-20" />
+                    ))}
+                  </div>
+                </div>
+                <div className="lg:col-span-5 terminal-card p-5">
+                  <Skeleton className="h-6 w-48 mb-5" />
+                  <Skeleton className="h-10 w-40 mb-3" />
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-2/3 mb-5" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
               </div>
             )}
 
@@ -293,7 +328,6 @@ export const App: React.FC = () => {
                 {riskProfile && (
                   <VoyageRiskCard
                     riskProfile={riskProfile}
-                    origin={origin}
                     destination={destination}
                   />
                 )}
@@ -344,9 +378,11 @@ export const App: React.FC = () => {
           auditData ? (
             <ModelHonestyAudit auditData={auditData} />
           ) : (
-            <div className="terminal-card p-6 text-center text-slate-400 font-mono text-xs flex items-center justify-center gap-2">
-              <Cpu className="w-4 h-4 animate-spin text-amber-400" />
-              <span>Fetching model evaluation audits from Flask API...</span>
+            <div className="terminal-card p-6 space-y-3">
+              <Skeleton className="h-6 w-72" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-40 w-full mt-4" />
             </div>
           )
         )}
@@ -359,26 +395,27 @@ export const App: React.FC = () => {
       />
 
       {/* Terminal Footer */}
-      <footer className="border-t border-[#152338] bg-[#070c17] py-5 px-4 text-xs font-mono text-slate-400">
-        <div className="max-w-[1700px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-200 uppercase">
-              SAIL Maritime Freight Intelligence Terminal
+      <footer className="border-t border-[rgba(56,116,187,0.14)] bg-[#050a13]/90 py-4 px-4 text-[11px] font-mono text-slate-500">
+        <div className="max-w-[1700px] mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="font-bold text-slate-300 uppercase tracking-wide">
+              Freight Procurement Terminal
             </span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-400">Ministry of Steel • SIH 2026</span>
+            <span className="text-slate-700">|</span>
+            <span>Decision support only — not a fixture quote</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
-            <span>Route Distances: Sea-Distances.org</span>
-            <span>•</span>
-            <span>Charter Benchmarks: Clarksons Research 2024</span>
-            <span>•</span>
-            <span>Port Drafts: Indian Major Ports Authority</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span>Distances: self-derived great-circle methodology</span>
+            <span className="text-slate-700">·</span>
+            <span>Port drafts: public authority notices</span>
+            <span className="text-slate-700">·</span>
+            <span>Assumptions: operator-configured</span>
           </div>
 
-          <div className="text-[11px] text-slate-500">
-            Backend: Python 3.12 Flask REST API (Port 5000) • Live Market Feeds Active
+          <div className="flex items-center gap-1.5">
+            <span className="status-led status-led-emerald" style={{ width: 6, height: 6 }} />
+            <span>Data Provenance audit available in-app</span>
           </div>
         </div>
       </footer>

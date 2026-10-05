@@ -2,29 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DESIGN TOKENS — layered surfaces, accents, elevation
+   ============================================================ */
 :root {
-  --bg-abyss: #04070e;
-  --bg-primary: #070c17;
-  --bg-card: #0b1220;
-  --bg-card-hover: #101a2d;
-  --border-subtle: #152236;
-  --border-medium: #1c2e47;
-  --border-accent: #253e61;
-  
-  --text-bright: #f8fafc;
-  --text-main: #e2e8f0;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  
+  /* Surfaces: page < panel < card < raised */
+  --bg-abyss: #04070d;
+  --bg-primary: #070c15;
+  --bg-card: #0b1322;
+  --bg-raised: #101a2e;
+  --bg-inset: #070d18;
+
+  --border-subtle: rgba(56, 116, 187, 0.14);
+  --border-medium: rgba(72, 138, 210, 0.22);
+  --border-strong: rgba(94, 158, 226, 0.34);
+
+  --text-bright: #f4f8fd;
+  --text-main: #dbe5f1;
+  --text-muted: #8fa3bc;
+  --text-dim: #5d6f88;
+
   --ocean-blue: #0284c7;
   --ocean-sky: #38bdf8;
-  --signal-amber: #f59e0b;
-  --signal-emerald: #10b981;
-  --signal-rose: #ef4444;
+  --ocean-glow: rgba(56, 189, 248, 0.35);
+  --signal-amber: #fbbf24;
+  --signal-emerald: #34d399;
+  --signal-rose: #fb7185;
+  --signal-violet: #a78bfa;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px -12px rgba(2, 8, 20, 0.9);
+  --shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 18px 44px -14px rgba(2, 8, 20, 0.95), 0 0 24px -8px var(--ocean-glow);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -33,159 +48,320 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   min-height: 100vh;
-  background-image: 
-    radial-gradient(rgba(14, 165, 233, 0.03) 1px, transparent 0),
-    linear-gradient(to bottom, #04070e, #070c17 400px);
-  background-size: 32px 32px, 100% 100%;
+  /* Ambient depth: aurora glows anchored to the viewport + faint survey grid */
+  background-image:
+    radial-gradient(1100px 520px at 8% -6%, rgba(2, 132, 199, 0.14), transparent 60%),
+    radial-gradient(900px 480px at 96% 0%, rgba(99, 102, 241, 0.10), transparent 55%),
+    radial-gradient(1200px 700px at 50% 118%, rgba(14, 165, 233, 0.07), transparent 60%),
+    radial-gradient(rgba(70, 130, 180, 0.05) 1px, transparent 1.6px),
+    linear-gradient(to bottom, #04070d, #060b14 480px, #04070d);
+  background-size: auto, auto, auto, 34px 34px, 100% 100%;
+  background-attachment: fixed;
 }
 
-/* Monospace font utility for numbers, tickers, technical parameters */
 .font-mono {
   font-family: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', Consolas, monospace;
 }
 
-/* Custom Scrollbar */
+/* Tabular figures so numbers never jitter while animating */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* ============================================================
+   SELECTION, FOCUS, SCROLLBAR
+   ============================================================ */
+::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #f8fafc;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 9px;
+  height: 9px;
 }
 ::-webkit-scrollbar-track {
-  background: #04070e;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1c2e47;
-  border-radius: 3px;
+  background: linear-gradient(180deg, #1d3050, #15243c);
+  border-radius: 6px;
+  border: 2px solid var(--bg-abyss);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #2b4468;
 }
 
-/* Maritime Industrial Terminal Card */
+/* ============================================================
+   CARDS — layered elevation with light-edge and hover lift
+   ============================================================ */
 .terminal-card {
-  background: #0b1220;
-  border: 1px solid #17263c;
-  border-radius: 6px;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
   position: relative;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background:
+    linear-gradient(180deg, rgba(148, 197, 255, 0.045), rgba(148, 197, 255, 0) 140px),
+    var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .terminal-card:hover {
-  border-color: #243a59;
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-lift);
 }
 
-/* Subtle corner indicators for industrial control room feel */
+/* Hairline accent across the card top */
 .terminal-card::before {
   content: '';
   position: absolute;
   top: -1px;
-  left: -1px;
-  width: 6px;
-  height: 6px;
-  border-top: 2px solid #38bdf8;
-  border-left: 2px solid #38bdf8;
-  opacity: 0.7;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.45), transparent);
+  pointer-events: none;
 }
 
-.terminal-card::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 6px;
-  height: 6px;
-  border-bottom: 2px solid #38bdf8;
-  border-right: 2px solid #38bdf8;
-  opacity: 0.7;
+/* Inset well for numbers / tables */
+.inset-well {
+  background: var(--bg-inset);
+  border: 1px solid rgba(56, 116, 187, 0.12);
+  border-radius: 8px;
+  box-shadow: inset 0 2px 8px rgba(2, 8, 20, 0.55);
 }
 
-/* Status Indicator LED */
+/* ============================================================
+   STATUS LEDs
+   ============================================================ */
 .status-led {
   display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 .status-led-emerald {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: var(--signal-emerald);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.9);
+  animation: ledPulse 2.4s ease-in-out infinite;
 }
 .status-led-amber {
-  background: #f59e0b;
-  box-shadow: 0 0 8px #f59e0b;
+  background: var(--signal-amber);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.9);
+  animation: ledPulse 2.4s ease-in-out infinite;
 }
 .status-led-rose {
-  background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
+  background: var(--signal-rose);
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.9);
+  animation: ledPulse 1.6s ease-in-out infinite;
 }
 
-/* Terminal Tables */
+@keyframes ledPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ============================================================
+   TABLES
+   ============================================================ */
 table {
   border-collapse: collapse;
 }
 
 th {
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
-/* Sliders */
+/* ============================================================
+   FORM CONTROLS
+   ============================================================ */
 input[type=range] {
   -webkit-appearance: none;
   appearance: none;
-  background: #132034;
+  width: 100%;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 999px;
   outline: none;
-  border: 1px solid #1c2e47;
+  border: 1px solid rgba(56, 116, 187, 0.18);
+  background: linear-gradient(
+    to right,
+    var(--ocean-sky) 0%,
+    var(--ocean-blue) var(--fill, 50%),
+    #101c30 var(--fill, 50%),
+    #0d1728 100%
+  );
+  box-shadow: inset 0 1px 3px rgba(2, 8, 20, 0.7);
+  cursor: pointer;
 }
 
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #38bdf8;
-  cursor: pointer;
-  border: 2px solid #070c17;
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+  background: radial-gradient(circle at 35% 30%, #bfe8ff, var(--ocean-sky) 60%, #0284c7);
+  cursor: grab;
+  border: 2px solid #061020;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15), 0 0 14px rgba(56, 189, 248, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.2), 0 0 18px rgba(56, 189, 248, 0.7);
+}
+
+input[type=range]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.05);
 }
 
 input[type=range]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #38bdf8;
-  cursor: pointer;
-  border: 2px solid #070c17;
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+  background: radial-gradient(circle at 35% 30%, #bfe8ff, var(--ocean-sky) 60%, #0284c7);
+  cursor: grab;
+  border: 2px solid #061020;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15), 0 0 14px rgba(56, 189, 248, 0.55);
 }
 
-/* Select element styling */
+input[type=range]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+/* Selects: dark panel look with custom chevron */
 select {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
-  background-position: right 0.5rem center;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg-inset);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%237dd3fc' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.6rem center;
   background-repeat: no-repeat;
-  background-size: 1.25em 1.25em;
-  padding-right: 2rem;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
+  background-size: 1.15em 1.15em;
+  padding-right: 2.2rem;
+  border: 1px solid rgba(56, 116, 187, 0.25);
+  border-radius: 8px;
+  color: var(--text-bright);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-/* Animations */
+select:hover {
+  border-color: var(--border-strong);
+  background-color: #0a1322;
+}
+
+select:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14), 0 0 18px -6px var(--ocean-glow);
+}
+
+select option {
+  background-color: #0b1322;
+  color: var(--text-main);
+}
+
+/* ============================================================
+   MOTION — entrances, shimmer, route flow
+   ============================================================ */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.reveal {
+  opacity: 0;
+  animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.reveal-d1 { animation-delay: 0.05s; }
+.reveal-d2 { animation-delay: 0.12s; }
+.reveal-d3 { animation-delay: 0.19s; }
+.reveal-d4 { animation-delay: 0.26s; }
+.reveal-d5 { animation-delay: 0.33s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: none; opacity: 1; }
+  .status-led { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+@keyframes shimmer {
+  from { background-position: -450px 0; }
+  to { background-position: 450px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(56, 116, 187, 0.08) 25%,
+    rgba(56, 116, 187, 0.18) 37%,
+    rgba(56, 116, 187, 0.08) 63%
+  );
+  background-size: 900px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 8px;
+}
+
+/* Animated freight-route flow on the corridor map */
+@keyframes routeFlow {
+  to { stroke-dashoffset: -28; }
+}
+
+.route-flow {
+  animation: routeFlow 1.4s linear infinite;
+}
+
+/* Soft glow text for key figures */
+.text-glow-sky {
+  text-shadow: 0 0 22px rgba(56, 189, 248, 0.45);
+}
+.text-glow-emerald {
+  text-shadow: 0 0 22px rgba(52, 211, 153, 0.4);
+}
+.text-glow-rose {
+  text-shadow: 0 0 22px rgba(251, 113, 133, 0.4);
+}
+
+/* Score meter */
+.score-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(56, 116, 187, 0.16);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(2, 8, 20, 0.7);
+}
+
+.score-meter > div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
