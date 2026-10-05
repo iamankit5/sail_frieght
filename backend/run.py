@@ -17,9 +17,10 @@ app = create_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    host = os.environ.get("HOST", "127.0.0.1")
-    # The Flask dev server must never run with the debugger enabled in any
-    # reachable deployment: its interactive console is remote code execution.
+    # 0.0.0.0 by default so PaaS deployments (Render/Railway/Fly) pass health
+    # checks; set HOST=127.0.0.1 for local development. The debugger stays OFF
+    # unless FLASK_DEBUG is explicitly enabled — production should use gunicorn.
+    host = os.environ.get("HOST", "0.0.0.0")
     debug = os.environ.get("FLASK_DEBUG", "").lower() in ("true", "1")
     print("=" * 65)
     print(f"  Freight Procurement API (development) on http://{host}:{port}")
